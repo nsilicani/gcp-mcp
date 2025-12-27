@@ -1,21 +1,28 @@
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+RUN npm install -g pnpm
+
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+COPY . .
+RUN pnpm build
+
+# ------------------------
+
 FROM node:22-alpine
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json pnpm-lock.yaml ./
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY package.json ./
 
-# Install pnpm
-RUN npm install -g pnpm
+ENV NODE_ENV=production
+ENV PORT=8080
 
-# Install dependencies
-RUN pnpm install
+EXPOSE 8080
 
-# Copy application code
-COPY . .
-
-# Build the application
-RUN pnpm build
-
-# Command will be provided by smithery.yaml
 CMD ["node", "dist/index.js"]

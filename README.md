@@ -1,3 +1,9 @@
+# IMPORTANT
+This is a fork by [google-cloud-mcp](https://github.com/krzko/google-cloud-mcp). My contribution is just:
+- Streamable HTTP transport support
+- Dockerfile updating
+- `deploy.sh` script to deploy to Google Cloud Run
+
 # Google Cloud MCP Server
 
 A Model Context Protocol server that connects to Google Cloud services to provide context and tools for interacting with your Google Cloud resources.
@@ -218,3 +224,22 @@ If you're having authentication issues, make sure:
 - Your service account has the necessary permissions
 - The key file is properly formatted and accessible
 - Environment variables are correctly set
+
+## Containerization
+
+To run the mcp server as docker container:
+```bash
+docker build -t gcp-mcp:latest .
+docker run --rm --name gcp-mcp-container -p 3001:3001 -v "path\to\GOOGLE_APPLICATION_CREDENTIALS\gcp_key.json:/app/gcp_key.json:ro" -e GOOGLE_APPLICATION_CREDENTIALS=/app/gcp_key.json gcp-mcp:latest
+```
+The MCP HTTP server is listening on `http://localhost:3001/mcp`
+
+## Deploy to Cloud Run
+In order to deploy to Cloud Run, set the following environmental variables:
+```bash
+export GCLOUD_USER=<your_gcloud_user@gmail.com>
+```
+Then, run the deployment script
+```bash
+./deploy.sh
+```
