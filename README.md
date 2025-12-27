@@ -239,7 +239,7 @@ In order to deploy to Cloud Run, set the following environmental variables:
 ```bash
 export GCLOUD_USER=<your_gcloud_user@gmail.com>
 ```
-Then, run the deployment script
+The deployment script `deploy.sh` assumes that a Google Service Account is created with name `gcp-mcp-sa`. If you want to change name, please update deployment script. Then, run the deployment script.
 ```bash
 ./deploy.sh
 ```
