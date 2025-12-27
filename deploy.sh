@@ -11,7 +11,6 @@ REGION="europe-west1"
 # Service account used by Cloud Run (must already exist)
 # Grant yourself roles/iam.serviceAccountUser
 PROJECT="$(gcloud config get-value project)"
-GCLOUD_USER="niccolo.silicani@gmail.com"
 SERVICE_ACCOUNT="gcp-mcp-sa@$(gcloud config get-value project).iam.gserviceaccount.com"
 echo "Granting yourself roles/iam.serviceAccountUser"
 gcloud iam service-accounts add-iam-policy-binding "$SERVICE_ACCOUNT" \
