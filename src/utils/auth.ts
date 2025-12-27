@@ -28,114 +28,54 @@ export let authClient: GoogleAuth | null = null;
 export async function initGoogleAuth(
   requireAuth = false,
 ): Promise<GoogleAuth | null> {
-  // Check if we're in lazy loading mode
-  const lazyAuth = process.env.LAZY_AUTH !== "false"; // Default to true if not set
+  const lazyAuth = process.env.LAZY_AUTH !== "false";
 
-  // If we're in lazy loading mode and not explicitly requiring auth, defer authentication
   if (lazyAuth && !requireAuth) {
-    logger.info(
-      "Lazy authentication enabled - deferring authentication until needed",
-    );
+    logger.info("Lazy authentication enabled - deferring authentication");
   }
+
   try {
-    // If we already have an auth client, return it
+    // Reuse client if already created
     if (authClient) {
       return authClient;
     }
 
-    // Handle credentials from environment variables securely (no temporary files)
+    // 1️⃣ Explicit credentials (legacy / CI / local JSON key)
     if (process.env.GOOGLE_CLIENT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
-      try {
-        // Use GoogleAuth with credentials object directly - no filesystem operations
-        const credentials = {
+      logger.info("Using Google credentials from environment variables");
+
+      authClient = new GoogleAuth({
+        credentials: {
           type: "service_account",
-          project_id: process.env.GOOGLE_CLOUD_PROJECT || "",
+          project_id: process.env.GOOGLE_CLOUD_PROJECT,
           private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
           client_email: process.env.GOOGLE_CLIENT_EMAIL,
-          client_id: "",
-          auth_uri: "https://accounts.google.com/o/oauth2/auth",
-          token_uri: "https://oauth2.googleapis.com/token",
-          auth_provider_x509_cert_url:
-            "https://www.googleapis.com/oauth2/v1/certs",
-          client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(
-            process.env.GOOGLE_CLIENT_EMAIL,
-          )}`,
-        };
-
-        // Create auth client directly from credentials object (secure approach)
-        authClient = new GoogleAuth({
-          credentials,
-          scopes: [
-            "https://www.googleapis.com/auth/cloud-platform",
-            "https://www.googleapis.com/auth/spanner.data",
-            "https://www.googleapis.com/auth/logging.read",
-            "https://www.googleapis.com/auth/monitoring.read",
-          ],
-        });
-
-        // Only verify the token if explicitly required
-        if (requireAuth) {
-          try {
-            const client = await authClient.getClient();
-            await client.getAccessToken();
-          } catch (verifyError) {
-            authClient = null;
-            throw verifyError;
-          }
-        }
-
-        return authClient;
-      } catch (error) {
-        logger.warn(
-          `Failed to initialise credentials from environment variables: ${error instanceof Error ? error.message : String(error)}`,
-        );
-        if (requireAuth) {
-          throw new Error(
-            `Failed to initialise credentials from environment variables: ${error instanceof Error ? error.message : String(error)}`,
-          );
-        }
-        return null;
-      }
-    }
-
-    // Fall back to Application Default Credentials if GOOGLE_APPLICATION_CREDENTIALS is set
-    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-      // Create the auth client using Application Default Credentials
-      authClient = new GoogleAuth({
-        scopes: [
-          "https://www.googleapis.com/auth/cloud-platform",
-          "https://www.googleapis.com/auth/spanner.data",
-          "https://www.googleapis.com/auth/logging.read",
-          "https://www.googleapis.com/auth/monitoring.read",
-        ],
+        },
+        scopes: ["https://www.googleapis.com/auth/cloud-platform"],
       });
 
-      // Only verify the token if explicitly required
-      // This prevents blocking operations during server startup
       if (requireAuth) {
-        try {
-          const client = await authClient.getClient();
-          await client.getAccessToken();
-        } catch (verifyError) {
-          authClient = null;
-          throw verifyError;
-        }
+        const client = await authClient.getClient();
+        await client.getAccessToken();
       }
 
       return authClient;
     }
 
-    // No authentication configured
+    // 2️⃣ Application Default Credentials (Cloud Run, GKE, local ADC)
+    logger.info("Using Application Default Credentials");
+
+    authClient = new GoogleAuth({
+      scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+    });
+
     if (requireAuth) {
-      throw new Error(
-        "Google Cloud authentication not configured. Please set GOOGLE_APPLICATION_CREDENTIALS " +
-          "or both GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY environment variables.",
-      );
+      const client = await authClient.getClient();
+      await client.getAccessToken();
     }
 
     return authClient;
   } catch (error) {
-    // Log error but don't crash the server unless authentication is required
     logger.error(
       `Auth error: ${error instanceof Error ? error.message : String(error)}`,
     );
