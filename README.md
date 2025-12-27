@@ -239,7 +239,26 @@ In order to deploy to Cloud Run, set the following environmental variables:
 ```bash
 export GCLOUD_USER=<your_gcloud_user@gmail.com>
 ```
-The deployment script `deploy.sh` assumes that a Google Service Account is created with name `gcp-mcp-sa`. Please grant the required permissions to this Service Account. If you want to change name, please update deployment script. Then, run the deployment script.
+The deployment script `deploy.sh` assumes that a Google Service Account is created with name `gcp-mcp-sa`. Please grant the required permissions to this Service Account. If you want to change name, please update deployment script. 
+It is important to set the Service Account because Cloud Run runs as a service account:
+- Google SDKs automatically authenticate
+- No JSON key file
+- No private key
+- No env var
+This is called Application Default Credentials (ADC).
+In your code we have:
+```ts
+initGoogleAuth()
+```
+This will:
+- Just work on Cloud Run
+- Use the service account identity
+- No secrets required
+The deployment script script uses source-based deployment. In particular, the workflow encompasses:
+1. Build a container image
+2. Push it to Artifact Registry
+3. Deploy it to Cloud Run
+All of this happens automatically. To run the script:
 ```bash
 ./deploy.sh
 ```
